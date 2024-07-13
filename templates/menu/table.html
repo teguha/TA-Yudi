@@ -1,0 +1,241 @@
+{% extends 'dsh.html' %}
+
+{% block mini_side%}
+    <div class="text-center d-none d-md-inline">
+        <button class="rounded-circle border-0" id="sidebarToggle"></button>
+    </div>
+{%endblock%}
+<!-- Page Heading -->
+{% block page_heading %}
+
+<h1 class="h3 mb-2 text-gray-800">Tables</h1>
+<p class="mb-4">DataTables is a third party plugin that is used to generate the demo table below.
+For more information about DataTables, please visit the <a target="_blank" href="https://datatables.net">official DataTables documentation</a>.</p>
+
+{% endblock %}
+
+{% block content %}
+<!-- DataTales Example -->
+<div class="card shadow mb-4">
+    <div class="card-header py-3 d-flex justify-content-between">
+        <div class="col-md-6">
+            <h6 class="m-0 font-weight-bold text-primary">DataTables Example</h6>
+        </div>
+        <div class="col-md-6 text-right">
+            <button type="button" class="btn btn-success" id="btnAdd" data-toggle="modal" data-target="#addDataModal">Add New</button>
+        </div>     
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Position</th>
+                        <th>Office</th>
+                        <th>Age</th>
+                        <th>Start date</th>
+                        <th>Salary</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+
+<!-- MODAL ADD -->
+<!-- Modal -->
+<div class="modal fade" id="addDataModal" tabindex="-1" role="dialog" aria-labelledby="addDataModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addDataModalLabel">Add New Data</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <!-- Isi form tambah data di sini -->
+                <form id="addDataForm">
+                    <div class="form-group">
+                        <label for="name">Name</label>
+                        <input type="text" class="form-control" id="name" name="name" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="position">Position</label>
+                        <input type="text" class="form-control" id="position" name="position" required>
+                    </div>
+                    <!-- Tambahkan input lainnya sesuai kebutuhan -->
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" id="btnSave">Submit</button>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- MODAL ADD -->
+{% endblock %}
+
+{% block script %}
+<!-- Bootstrap core JavaScript-->
+    <!-- Page level plugins -->
+    <script src="static/component_dsh/vendor/datatables/jquery.dataTables.min.js"></script>
+    <script src="static/component_dsh/vendor/datatables/dataTables.bootstrap4.min.js"></script>
+
+    <!-- Page level custom scripts -->
+    <script src="static/component_dsh/js/demo/datatables-demo.js"></script>
+
+    <script>
+        $(document).ready(function() {
+
+            // MODAL ADD
+            $('#btnSave').click(function() {
+                // Ambil data dari form
+                var name = $('#name').val();
+                var position = $('#position').val();
+
+                // Buat objek data untuk dikirim
+                var data = {
+                    name: name,
+                    position: position
+                };
+
+                console.log(data)
+
+                // Kirim data ke server Flask menggunakan AJAX
+                $.ajax({
+                    url: '/save-data',  // Ganti dengan endpoint Flask yang sesuai
+                    type: 'POST',  // Metode HTTP POST untuk mengirim data
+                    contentType: 'application/json',  // Jenis konten yang dikirim
+                    data: JSON.stringify(data),  // Mengonversi objek JavaScript ke JSON
+                    success: function(response) {
+                        console.log('Data berhasil disimpan:', response);
+                    },
+                    error: function(error) {
+                        console.error('Terjadi kesalahan:', error);
+                    }
+                });
+
+                // Tutup modal setelah mengirim data
+                $('#addDataModal').modal('hide');
+            });
+            // MODAL ADD
+
+
+            // Hancurkan DataTable yang sudah ada, jika ada
+            if ($.fn.DataTable.isDataTable('#dataTable')) {
+                $('#dataTable').DataTable().destroy();
+            }
+                
+            $.ajax({
+                url: "/data",
+                type: "GET",
+                dataType: "json",
+                success: function(response) {
+                    $('#dataTable').DataTable({
+                        "data": response,
+                        "columns": [
+                            { "data": "name" },
+                            { "data": "position" },
+                            { "data": "office" },
+                            { "data": "age" },
+                            { "data": "start_date" },
+                            { "data": "salary" },
+                            {
+                                "data": null,
+                                "title": "Aksi",
+                                "render": function(data, type, full, meta) {
+                                    return `
+                                        <button type="button" class="btn btn-primary btn-sm" onclick="editRow(${meta.row})">Edit</button>
+                                        <button type="button" class="btn btn-danger btn-sm" onclick="deleteRow(${meta.row})">Delete</button>
+                                        <button type="button" class="btn btn-info btn-sm" onclick="showDetail(${meta.row})">Show</button>
+                                    `;
+                                },
+                                "searchable": false, // Kolom Aksi tidak ikut dalam pencarian
+                                "orderable": false, // Juga bisa menonaktifkan pengurutan jika diperlukan
+                            }
+                        ],
+                        "initComplete": function () {
+                            var table = this.api();
+                            // var theadRow = $('<tr></tr>').appendTo($(table.table().header()));
+
+                            // table.columns().every(function () {
+                            //     var headerText = ['Name', 'Position', 'Office','Age','Start Date','Salary','Action'][this.index()]; // Mengambil teks dari array sesuai dengan indeks kolom
+                                
+                            //     $('<th>' + headerText + '</th>').appendTo(theadRow);
+                            // });
+
+                            // table.columns().every(function () {
+                            //     var column = this;
+                            //     var header = $(this.header());
+
+
+                            //     var title = header.text().trim();
+                            
+                                
+                            //     if (title !== '') {
+                            //         console.log(header.text());
+                            //         if(title !='Aksi'){
+                            //             var input = $('<input type="text" placeholder="Filter ' + title + '" />')
+                            //                 .on('keyup change', function () {
+                            //                     if (column.search() !== this.value) {
+                            //                         column.search(this.value).draw();
+                            //                     }
+                            //                 });
+                            //         }else{
+                            //             var input = $('<p style="width:180px;"></p>');
+                            //         }
+
+                            //         header.empty().append(input);
+                            //     }
+                            // });
+
+                        },
+
+                    });
+                },
+                error: function(error) {
+                    console.log(error);
+                }
+            });
+        
+
+
+
+            //Modal Data Edit Delete Show
+            function editRow(rowIndex) {
+                var data = dataTable.row(rowIndex).data();
+                // Implementasi logika edit
+                console.log("Edit data:", data);
+                // Tambahkan logika edit sesuai kebutuhan
+            }
+
+            // Fungsi untuk menghapus baris
+            function deleteRow(rowIndex) {
+                var data = dataTable.row(rowIndex).data();
+                // Implementasi logika hapus
+                console.log("Hapus data:", data);
+                // Tambahkan logika hapus sesuai kebutuhan
+            }
+
+            // Fungsi untuk menampilkan detail
+            function showDetail(rowIndex) {
+                var data = dataTable.row(rowIndex).data();
+                // Implementasi logika tampilkan detail
+                console.log("Detail data:", data);
+                // Tambahkan logika tampilkan detail sesuai kebutuhan
+            }
+
+        });
+    </script>
+{% endblock %}
+
+
+
+
